@@ -1,5 +1,10 @@
-var args = arguments[0] || {};
+$.feedTable.addEventListener("click", processTableClicks);
 
+
+var commentController = Alloy.createController("Comment", {
+	photo : model,
+	parentController: $
+});
 //this captures the event
 OS_IOS && $.cameraButton.addEventListener("click", function(_event) {
 	$.cameraButtonClicked(_event);
@@ -7,32 +12,47 @@ OS_IOS && $.cameraButton.addEventListener("click", function(_event) {
 
 //event handlers
 
-/*
- * In this code, we retrieve a picture and the event.media object holding the picture
- * taken by the user.  We need to place the image into a table view according to the wireframes
- * we worked up.  We do this by adding items to a row, then inserting the row into the table view
- *
- * see: http://docs.appcelerator.com/titanium/latest/#!/guide/TableViews
- */
+function processTableClicks(_event) {
+	if (_event.source.id === "commentButton") {
+		handleCommentButtonClicked(_event);
+	}else if (_event.source.id === "shareButton"){
+		alert('Will do this later!!');
+	}
+}
+
+function handleCommentButtonClicked(_event) {
+	var collection = Alloy.Collections.instance("Photo");
+	var model = collection.get (_event.row.row_id);
+	
+	var controller = Alloy.createController("comment", {
+		photo : model,
+		parentController : $,
+	});
+	
+	//initialize the data in the view, load content
+	controller.initialize();
+	
+	//open the view
+	Alloy.Globals.openCurrentTabWindow(controller.getView());
+}
+
+
 $.cameraButtonClicked = function(_event) {
 	alert("user clicked the camera button");
 
 	var photoSource = Titanium.Media.getIsCameraSupported() ? Titanium.Media.showCamera : Titanium.Media.openPhotoGallery;
 
-	//photosource is now a variable representing one of the methods above:
-	//Titanium.Media.showCamera OR Titanium.Media.openPhotoGallery
-	//the constructed object is the expected argument to that method
-	//thus, the code below is a call to that method
+	
 	photoSource({
 		success : function(event) {
-			//seonc argument is the callback
+			
 			processImage(event.media, function(processResponse) {
 
 				if(processResponse.success){
-					//create a row
+					
 					var row = Alloy.createController("feedRow", processResponse.model);
 	
-					//add the controller view, which is a row to the table
+					
 					if ($.feedTable.getData().length === 0) {
 						$.feedTable.setData([]);
 						$.feedTable.appendRow(row.getView(), true);
@@ -40,7 +60,7 @@ $.cameraButtonClicked = function(_event) {
 						$.feedTable.insertRowBefore(0, row.getView(), true);
 					}
 	
-					//photoObject = photoResp;					
+									
 				} else {
 					alert('Error saving photo ' + processResponse.message);					
 				}
@@ -48,10 +68,10 @@ $.cameraButtonClicked = function(_event) {
 			});
 		},
 		cancel : function() {
-			//called when the user cancels taking a picture
+			
 		},
 		error : function(error) {
-			//display alert on error
+			
 			if (error.code == Titanium.Media.NO_CAMERA) {
 				alert("Please run this test on a device");
 			} else {
@@ -60,34 +80,19 @@ $.cameraButtonClicked = function(_event) {
 		},
 		saveToPhotoGallery : false,
 		allowEditing : true,
-		//only allow for photos, no video
+		
 		mediaTypes : [Ti.Media.MEDIA_TYPE_PHOTO]
 	});
 };
 
-/*
-function processImage(_mediaObject, _callback){
-//we are not yet integrating with ACS, so we fake it
-var photoObject = {
-image: _mediaObject,
-title: "Sample Photo " + new Date()
-};
-//return the object to the caller
-_callback(photoObject);
-}*/
 
-/**
- *
- * @param {Object} _mediaObject object from the camera
- * @param {Function} _callback where to call when the function is completed
- */
 function processImage(_mediaObject, _callback) {
 	var parameters = {
 		"photo" : _mediaObject,
 		"title" : "Sample Photo " + new Date(),
 		"photo_sizes[preview]" : "200x200#",
 		"photo_sizes[iphone]" : "320x320#",
-		// We need this since we are showing the image immediately
+		
 		"photo_sync_sizes[]" : "preview"
 	};
 
@@ -115,23 +120,21 @@ function processImage(_mediaObject, _callback) {
 }
 
 
-/**
- * Loads photos from ACS
- */
+
 function loadPhotos() {
 	var rows = [];
 
-	// creates or gets the global instance of photo collection
+	
 	var photos = Alloy.Collections.photo || Alloy.Collections.instance("Photo");
 
-	// be sure we ignore profile photos;
+	
 	var where = {
 		title : {
 			"$exists" : true
 		}
 	};
 
-	//this is a method in the model - from backbone.js
+	
 	photos.fetch({
 		data : {
 			order : '-created_at',
