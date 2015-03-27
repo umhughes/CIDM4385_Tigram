@@ -46,18 +46,73 @@ var user = Alloy.createModel('User');
 // we are using the default administration account for now
 user.login("cidm4385_tigram_admin", "cidm4385", function(_response) {
 	
-	if(_response.success)
-	{
-		//$.index.open();
-		$.tabGroup.open();
-
-		// pre-populate the feed with recent photos
-		$.feedController.initialize();		
-	} else {
-  		alert("Error starting application " + _response.error);
-  		Ti.API.error('error logging in ' + _response.error);
+	if(user.authenticated() === true){
+		$.userLoggedInAction();
+	}else{
+		$.userNotLogedInAction();
 	}
 });
+
+
+$.userLoggedInAction = function(){
+	user.showMe(function(_response){
+		if (_response.success === true){
+			indexController.loginSuccessAction(_response);
+		}else{
+			alert("Application Error\n " + _response.error.message);
+			Ti.API.error(JSON.stringify(_response.error, null, 2));
+			
+			//go ahead and do the login
+			$.userNotLoggedInAction();
+		}
+	});
+};
+
+
+$.loginSuccessAction = function(_options){
+	Ti.API.info('logged in user information');
+	Ti.API.info(JSON.stringif(_options.model, null, 2));
+	
+	//open the main screen
+	$.tabGroup.open();
+	
+	//set tabGroup to initial tab, in case this is coming from a previously logged in state
+	$.tabGroup.setActiveTab(0);
+	
+	//pre-populate the feed with recent photos
+	$.feedController.initialize();
+	
+	//get the current user
+	Alloy.Globals.currentUser = _options.model;
+	
+	//set the parent controller for all of the tabs, give us access to the global tab group and misc functionality
+	$.feedController.parentController = $;
+	$.friendsController.parentController= $;
+	$.settingsController.parentController = $;
+};
+
+$.userNotLoggedInAction = function(){
+	//open the login controller to login the user
+	if(!$.loginController){
+		var loginController = Alloy.createController("login", {
+			parentController : $,
+			reset : true
+		});
+		
+		//save controller so we know not to create one again
+		$.loginController = loginController;
+	}
+	
+	//open the window
+	$.loginController.open(true);
+};
+
+
+
+
+
+
+
 
 Alloy.Globals.openCurrentTabWindow = function (_window) {
 	$.tabGroup.activeTab.open(_window);

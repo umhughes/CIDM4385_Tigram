@@ -4,6 +4,54 @@ var comments = Alloy.Collections.instance("Comment");
 var parameters = arguments[0] || {};
 var currentPhoto = parameters.photo || {};
 var parentController = parameters.parentController || {};
+$.commentTable.addEventListener("delete", handleDeleteRow);
+$.commentTable.addEventListener("longpress", handleDeleteRow);
+$.commentTable.editable = true;
+
+function handleDeleteRow(_event){
+	var collection = Alloy.Collections.instance("Comment");
+	var model = collection.get(_event.row.comment_id);
+	
+	if (!model){
+		alert("Could not find selected comment");
+		return;
+	}else{
+		if(OS_ANDROID){
+			var optionAlert = Titanium.UI.createAlertDialog({
+				title: 'Alert',
+				message : 'Are you sure you want to delete the comment?', 
+				buttonNames : ['Yes', 'No'],
+			});
+			
+			optionAlert.addEventListener('click', function(e){
+				if (e.index == 0){
+					deleteComment(model);
+				}
+			});
+			optionAlert.show();
+		}else{
+			deleteComment(model);
+		}
+	}
+}
+
+function deleteComment (_comment){
+	_comment.destroy({
+		data : {
+			photo_id : currentPhoto.id, //comment on
+			id : _comment.id //id of the object 
+		},
+		success : function(_model, _response){
+			loadComments(null);
+		},
+		error : function(_e){
+			Ti.API.error('error: ' + _e.message);
+			alert("Error deleting comment");
+			loadComments(null);
+		}
+	});
+}
+
 
 function loadComments(_photo_id){
 	var params = {
